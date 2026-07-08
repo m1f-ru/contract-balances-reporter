@@ -1,0 +1,20 @@
+# Секреты — НИКОГДА в git
+config.local.*
+.env
+*.local.php
+*.secret
+
+# Артефакты и состояние
+/out/
+/output/
+/state/
+/cache/
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+
+# Сгенерированные данные веб-отчёта (не коммитим)
+web/data.json

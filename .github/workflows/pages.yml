@@ -1,0 +1,46 @@
+name: Отчёт на GitHub Pages
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 */6 * * *'   # каждые 6 часов (при формировании отчёта данные свежие)
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Собрать данные отчёта (web/data.json) — read-only из 1С
+        env:
+          BUH_BASE: ${{ secrets.BUH_BASE }}
+          BUH_USER: ${{ secrets.BUH_USER }}
+          BUH_PASS: ${{ secrets.BUH_PASS }}
+          BUH_ORG:  ${{ secrets.BUH_ORG }}
+          UNF_BASE: ${{ secrets.UNF_BASE }}
+          UNF_USER: ${{ secrets.UNF_USER }}
+          UNF_PASS: ${{ secrets.UNF_PASS }}
+          UNF_ORG:  ${{ secrets.UNF_ORG }}
+        run: node scripts/build-web.mjs
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Сверка остатков по госконтрактам — ГАУ ЦТО</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --ink:#1f2733; --muted:#6b7684; --line:#e6e9ee;
+    --accent:#0b6b6b; --accent-soft:#e8f2f2; --neg:#c0392b; --pos:#1f2733; --head:#0e2233;
+    --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:24px 20px 60px}
+  header.top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 24px;margin-bottom:18px}
+  header.top h1{font-size:22px;margin:0;font-weight:700;letter-spacing:-.01em}
+  header.top .sub{color:var(--muted);font-size:13px}
+  .meta{margin-left:auto;text-align:right;color:var(--muted);font-size:12.5px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:6px 0 20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+  .card .k{color:var(--muted);font-size:12px;margin-bottom:4px}
+  .card .v{font-size:20px;font-weight:700;letter-spacing:-.02em}
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+  .search{flex:1;min-width:220px;position:relative}
+  .search input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--line);border-radius:10px;
+    background:var(--card);font-size:14px;outline:none}
+  .search input:focus{border-color:var(--accent)}
+  .search svg{position:absolute;left:10px;top:9px;color:var(--muted)}
+  .seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{border:0;background:none;padding:9px 16px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
+  .seg button.on{background:var(--accent);color:#fff}
+  .tablecard{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  thead th{position:sticky;top:0;background:var(--head);color:#eaf1f4;font-weight:600;font-size:12px;
+    text-align:right;padding:11px 14px;white-space:nowrap;letter-spacing:.01em}
+  thead th:first-child{text-align:left}
+  tbody td{padding:10px 14px;text-align:right;border-top:1px solid var(--line);white-space:nowrap}
+  tbody td:first-child{text-align:left}
+  tr.contract{cursor:pointer}
+  tr.contract:hover{background:#fafbfc}
+  tr.contract td:first-child{font-weight:600}
+  .chev{display:inline-block;width:14px;color:var(--muted);transition:transform .15s;transform:rotate(0)}
+  tr.open .chev{transform:rotate(90deg)}
+  tr.z{background:var(--accent-soft)/.4;background:#f4f8f8;color:#38505a;font-size:13px;display:none}
+  tr.z.show{display:table-row}
+  tr.z td:first-child{padding-left:34px;color:#3a4a55}
+  .neg{color:var(--neg);font-weight:600}
+  tr.totals td{border-top:2px solid var(--head);font-weight:700;background:#fbfcfd}
+  .foot{color:var(--muted);font-size:12px;margin-top:16px;line-height:1.6}
+  .err{background:#fdecea;border:1px solid #f5c6c0;color:#a03227;padding:14px 16px;border-radius:10px}
+  @media (max-width:640px){ thead th,tbody td{padding:9px 8px;font-size:12px} header.top h1{font-size:19px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Сверка остатков по госконтрактам</h1>
+      <div class="sub">Заказчик: <b>ГАУ ЦТО</b> · Заказано → Отгружено → Принято</div>
+    </div>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="toolbar">
+    <label class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="q" type="search" placeholder="Поиск по номеру контракта…" autocomplete="off">
+    </label>
+    <div class="seg" id="unit">
+      <button data-u="qty" class="on">Штуки</button>
+      <button data-u="sum">Рубли</button>
+    </div>
+  </div>
+
+  <div class="tablecard">
+    <table>
+      <thead><tr>
+        <th>Контракт / Заявка</th>
+        <th>Заказано</th><th>Отгружено</th><th>Принято</th>
+        <th>Остаток&nbsp;к&nbsp;отгрузке</th><th>Остаток&nbsp;к&nbsp;приёмке</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+const state = { unit:'qty', q:'', data:null };
+
+const fmtInt = n => (Math.round(n)).toLocaleString('ru-RU');
+const fmtRub = n => (Math.round(n)).toLocaleString('ru-RU') + ' ₽';
+function cell(v){ const neg = v < 0; const s = state.unit==='qty' ? fmtInt(v) : fmtRub(v);
+  return '<td'+(neg?' class="neg"':'')+'>'+s+'</td>'; }
+
+function metricsQty(o){ return [o.ordQty,o.shipQty,o.recQty,o.toShipQty,o.toAcceptQty]; }
+function metricsSum(o){
+  const toShip = o.toShipSum!=null ? o.toShipSum : (o.ordSum-o.shipSum);
+  const toAcc  = o.toAcceptSum!=null ? o.toAcceptSum : (o.shipSum-o.recSum);
+  return [o.ordSum,o.shipSum,o.recSum,toShip,toAcc];
+}
+const metrics = o => state.unit==='qty' ? metricsQty(o) : metricsSum(o);
+
+function render(){
+  const d = state.data;
+  const q = state.q.trim().toLowerCase();
+  const contracts = d.byContract.filter(c => !q || String(c.contractKey).toLowerCase().includes(q));
+  const zByC = {};
+  for(const z of d.byZayavka){ (zByC[z.contractKey] ||= []).push(z); }
+
+  const tot = [0,0,0,0,0];
+  let html = '';
+  for(const c of contracts){
+    const m = metrics(c); m.forEach((v,i)=>tot[i]+=v);
+    html += '<tr class="contract" data-c="'+encodeURIComponent(c.contractKey)+'">'
+      + '<td><span class="chev">▸</span> '+esc(c.contractKey)+'</td>'
+      + m.map(v=>cell(v)).join('') + '</tr>';
+    const zs = (zByC[c.contractKey]||[]).slice().sort((a,b)=>String(a.zayavka).localeCompare(String(b.zayavka)));
+    for(const z of zs){
+      html += '<tr class="z" data-of="'+encodeURIComponent(c.contractKey)+'">'
+        + '<td>заявка '+esc(z.zayavka)+'</td>'
+        + metrics(z).map(v=>cell(v)).join('') + '</tr>';
+    }
+  }
+  html += '<tr class="totals"><td>Итого ('+contracts.length+')</td>'+tot.map(v=>cell(v)).join('')+'</tr>';
+  document.getElementById('rows').innerHTML = html;
+
+  document.querySelectorAll('tr.contract').forEach(tr=>{
+    tr.addEventListener('click',()=>{
+      tr.classList.toggle('open');
+      const c = tr.getAttribute('data-c');
+      document.querySelectorAll('tr.z[data-of="'+c+'"]').forEach(z=>z.classList.toggle('show'));
+    });
+  });
+}
+
+function summary(){
+  const d = state.data;
+  const sum = k => d.byContract.reduce((s,c)=>s+c[k],0);
+  const cards = [
+    ['Контрактов', d.byContract.length.toLocaleString('ru-RU')],
+    ['Заявок', d.byZayavka.length.toLocaleString('ru-RU')],
+    ['Остаток к отгрузке', fmtRub(sum('toShipSum'))],
+    ['Остаток к приёмке', fmtRub(sum('toAcceptSum'))],
+  ];
+  document.getElementById('cards').innerHTML = cards.map(c=>'<div class="card"><div class="k">'+c[0]+'</div><div class="v">'+c[1]+'</div></div>').join('');
+  const dt = new Date(d.generatedAt);
+  document.getElementById('meta').innerHTML = 'Данные из 1С:УНФ и 1С:Бухгалтерия<br>Обновлено: '+dt.toLocaleString('ru-RU');
+  document.getElementById('foot').innerHTML =
+    'Остаток к отгрузке = Заказано − Отгружено · Остаток к приёмке = Отгружено − Принято. '
+    + 'Отрицательный остаток — отгрузка/приёмка сверх плана. Отчёт обновляется автоматически; расчёт по контракту и заявке.';
+}
+const esc = s => String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+
+document.getElementById('q').addEventListener('input',e=>{ state.q=e.target.value; render(); });
+document.getElementById('unit').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  state.unit=b.dataset.u;
+  document.querySelectorAll('#unit button').forEach(x=>x.classList.toggle('on', x===b));
+  render();
+});
+
+fetch('./data.json',{cache:'no-store'}).then(r=>{ if(!r.ok) throw new Error('data.json '+r.status); return r.json(); })
+  .then(d=>{ state.data=d; summary(); render(); })
+  .catch(e=>{ document.getElementById('rows').innerHTML='<tr><td colspan="6"><div class="err">Не удалось загрузить данные ('+esc(e.message)+'). Если открываешь файл локально — запусти через веб-сервер или дождись публикации на GitHub Pages.</div></td></tr>'; });
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "unf": {
+    "base": "https://msk1.1cfresh.com/a/sbm/3186614",
+    "user": "REPLACE_ME",
+    "pass": "REPLACE_ME",
+    "org":  "c4e37282-b91c-11ef-9979-fa163e53a981"
+  },
+  "buh": {
+    "base": "https://msk1.1cfresh.com/a/ea/3093121",
+    "user": "REPLACE_ME",
+    "pass": "REPLACE_ME",
+    "org":  "1fbc43ca-89fa-11ef-8dbe-fa163e08443c"
+  }
+}

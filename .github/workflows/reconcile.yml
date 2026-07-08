@@ -1,0 +1,29 @@
+name: reconcile (read-only)
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 */6 * * *'   # каждые 6 часов (N уточняется)
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Run reconcile
+        env:
+          BUH_BASE: ${{ secrets.BUH_BASE }}
+          BUH_USER: ${{ secrets.BUH_USER }}
+          BUH_PASS: ${{ secrets.BUH_PASS }}
+          BUH_ORG:  ${{ secrets.BUH_ORG }}
+          UNF_BASE: ${{ secrets.UNF_BASE }}
+          UNF_USER: ${{ secrets.UNF_USER }}
+          UNF_PASS: ${{ secrets.UNF_PASS }}
+          UNF_ORG:  ${{ secrets.UNF_ORG }}
+        run: node scripts/reconcile3.mjs
+      - name: Upload results (private artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ostatki
+          path: out/
+          retention-days: 14
