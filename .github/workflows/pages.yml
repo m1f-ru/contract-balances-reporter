@@ -41,6 +41,8 @@ jobs:
         run: node scripts/build-web.mjs
 
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true   # принудительно ставит источник Pages = GitHub Actions
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web
