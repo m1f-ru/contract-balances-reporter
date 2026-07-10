@@ -1,6 +1,8 @@
 name: Отчёт на GitHub Pages
 
 on:
+  push:
+    branches: [main]        # авто-деплой при обновлении кода/страницы
   workflow_dispatch: {}
   schedule:
     - cron: '0 */6 * * *'   # каждые 6 часов (при формировании отчёта данные свежие)

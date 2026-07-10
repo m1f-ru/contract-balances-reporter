@@ -33,6 +33,8 @@
   .seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
   .seg button{border:0;background:none;padding:9px 16px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
   .seg button.on{background:var(--accent);color:#fff}
+  .xls{border:1px solid var(--accent);background:#fff;color:var(--accent);font-weight:600;font-size:13px;padding:9px 16px;border-radius:10px;cursor:pointer;white-space:nowrap}
+  .xls:hover{background:var(--accent);color:#fff}
   .tablecard{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow-x:auto}
   table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
   thead th{position:sticky;top:0;background:var(--head);color:#eaf1f4;font-weight:600;font-size:12px;
@@ -76,6 +78,7 @@
       <button data-u="qty" class="on">Штуки</button>
       <button data-u="sum">Рубли</button>
     </div>
+    <button id="xls" class="xls" type="button" title="Скачать всё в Excel (CSV)">↓ Скачать в Excel</button>
   </div>
 
   <div class="tablecard">
@@ -159,6 +162,32 @@ function summary(){
 }
 const esc = s => String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
 
+// --- Экспорт всего в Excel (CSV, полностью в браузере) ---
+const round2 = x => Math.round((x + Number.EPSILON) * 100) / 100;
+const csvEsc = s => { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+// длинные числовые номера контрактов — как текст (Excel иначе округляет/теряет нули)
+const labelCsv = s => { s = String(s); return /^\d{5,}$/.test(s) ? '"=""' + s + '"""' : csvEsc(s); };
+function exportCsv(){
+  const d = state.data; if(!d) return;
+  const zByC = {}; for(const z of d.byZayavka){ (zByC[z.contractKey] || (zByC[z.contractKey]=[])).push(z); }
+  const head = ['Контракт / Заявка','Заказано, шт','Отгружено, шт','Принято, шт','Ост. к отгрузке, шт','Ост. к приёмке, шт',
+                'Заказано, ₽','Отгружено, ₽','Принято, ₽','Ост. к отгрузке, ₽','Ост. к приёмке, ₽'];
+  const nums = o => [o.ordQty,o.shipQty,o.recQty,o.toShipQty,o.toAcceptQty,
+                     round2(o.ordSum),round2(o.shipSum),round2(o.recSum),round2(o.ordSum-o.shipSum),round2(o.shipSum-o.recSum)];
+  const out = [head.map(csvEsc).join(',')];
+  for(const c of d.byContract){
+    out.push([labelCsv(c.contractKey), ...nums(c)].join(','));
+    const zs = (zByC[c.contractKey]||[]).slice().sort((a,b)=>String(a.zayavka).localeCompare(String(b.zayavka)));
+    for(const z of zs) out.push([csvEsc('    заявка '+z.zayavka), ...nums(z)].join(','));
+  }
+  const blob = new Blob(['﻿' + out.join('\r\n')], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'sverka_gau_cto_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+
 document.getElementById('q').addEventListener('input',e=>{ state.q=e.target.value; render(); });
 document.getElementById('unit').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
@@ -166,10 +195,20 @@ document.getElementById('unit').addEventListener('click',e=>{
   document.querySelectorAll('#unit button').forEach(x=>x.classList.toggle('on', x===b));
   render();
 });
+document.getElementById('xls').addEventListener('click', exportCsv);
 
 fetch('./data.json',{cache:'no-store'}).then(r=>{ if(!r.ok) throw new Error('data.json '+r.status); return r.json(); })
   .then(d=>{ state.data=d; summary(); render(); })
   .catch(e=>{ document.getElementById('rows').innerHTML='<tr><td colspan="6"><div class="err">Не удалось загрузить данные ('+esc(e.message)+'). Если открываешь файл локально — запусти через веб-сервер или дождись публикации на GitHub Pages.</div></td></tr>'; });
+
+// Авто-высота при встраивании в iframe (Bitrix24): сообщаем высоту содержимого родителю,
+// чтобы не было внутреннего скролла (iframe растёт под контент).
+(function(){
+  const post = () => { try { parent.postMessage({ type:'sco-height', height: document.body.scrollHeight }, '*'); } catch(_){} };
+  if (window.ResizeObserver) new ResizeObserver(post).observe(document.body);
+  window.addEventListener('load', post);
+  window.addEventListener('resize', post);
+})();
 </script>
 </body>
 </html>
