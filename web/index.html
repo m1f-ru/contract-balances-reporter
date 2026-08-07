@@ -99,8 +99,13 @@
 const state = { unit:'qty', q:'', data:null };
 
 const fmtInt = n => (Math.round(n)).toLocaleString('ru-RU');
-const fmtRub = n => (Math.round(n)).toLocaleString('ru-RU') + ' ₽';
-function cell(v){ const neg = v < 0; const s = state.unit==='qty' ? fmtInt(v) : fmtRub(v);
+const fmtRub = n => {
+  const v = Number(n);
+  return (Object.is(v, -0) ? 0 : v).toLocaleString('ru-RU', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  }) + ' ₽';
+};function cell(v){ const neg = v < 0; const s = state.unit==='qty' ? fmtInt(v) : fmtRub(v);
   return '<td'+(neg?' class="neg"':'')+'>'+s+'</td>'; }
 
 function metricsQty(o){ return [o.ordQty,o.shipQty,o.recQty,o.toShipQty,o.toAcceptQty]; }
