@@ -1,0 +1,38 @@
+name: Диагностика номенклатуры
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Проверить тесты
+        run: node --test
+
+      - name: Прочитать metadata номенклатуры
+        env:
+          BUH_BASE: ${{ secrets.BUH_BASE }}
+          BUH_USER: ${{ secrets.BUH_USER }}
+          BUH_PASS: ${{ secrets.BUH_PASS }}
+          UNF_BASE: ${{ secrets.UNF_BASE }}
+          UNF_USER: ${{ secrets.UNF_USER }}
+          UNF_PASS: ${{ secrets.UNF_PASS }}
+        run: node scripts/inspect-nom-metadata.mjs
+
+      - name: Сохранить результат
+        uses: actions/upload-artifact@v4
+        with:
+          name: nom-metadata
+          path: out/nom-metadata.json
+          retention-days: 7
