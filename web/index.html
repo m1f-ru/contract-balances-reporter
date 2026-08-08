@@ -456,9 +456,7 @@ function exportCsv(){
       for(const p of ps){
         let status = 'сопоставлено';
 
-        if(p.matchStatus === 'matched' && p.matchMethod){
-          status += ' (' + p.matchMethod + ')';
-        } else if(p.matchStatus === 'unmatched'){
+        if(p.matchStatus === 'unmatched'){
           status = 'не сопоставлено';
         } else if(p.matchStatus === 'ambiguous'){
           status = 'неоднозначно';
