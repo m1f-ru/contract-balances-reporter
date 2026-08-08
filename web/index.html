@@ -341,24 +341,169 @@ const csvEsc = s => { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/
 // длинные числовые номера контрактов — как текст (Excel иначе округляет/теряет нули)
 const labelCsv = s => { s = String(s); return /^\d{5,}$/.test(s) ? '"=""' + s + '"""' : csvEsc(s); };
 function exportCsv(){
-  const d = state.data; if(!d) return;
-  const zByC = {}; for(const z of d.byZayavka){ (zByC[z.contractKey] || (zByC[z.contractKey]=[])).push(z); }
-  const head = ['Контракт / Заявка','Заказано, шт','Отгружено, шт','Принято, шт','Ост. к отгрузке, шт','Ост. к приёмке, шт',
-                'Заказано, ₽','Отгружено, ₽','Принято, ₽','Ост. к отгрузке, ₽','Ост. к приёмке, ₽'];
-  const nums = o => [o.ordQty,o.shipQty,o.recQty,o.toShipQty,o.toAcceptQty,
-                     round2(o.ordSum),round2(o.shipSum),round2(o.recSum),round2(o.ordSum-o.shipSum),round2(o.shipSum-o.recSum)];
-  const out = [head.map(csvEsc).join(',')];
-  for(const c of d.byContract){
-    out.push([labelCsv(c.contractKey), ...nums(c)].join(','));
-    const zs = (zByC[c.contractKey]||[]).slice().sort((a,b)=>String(a.zayavka).localeCompare(String(b.zayavka)));
-    for(const z of zs) out.push([csvEsc('    заявка '+z.zayavka), ...nums(z)].join(','));
+  const d = state.data;
+  if(!d) return;
+
+  const zByC = {};
+  for(const z of d.byZayavka){
+    (zByC[z.contractKey] || (zByC[z.contractKey]=[])).push(z);
   }
-  const blob = new Blob(['﻿' + out.join('\r\n')], { type:'text/csv;charset=utf-8' });
+
+  const pByZ = {};
+  for(const p of (d.byNom || [])){
+    const key = String(p.contractKey) + '#' + String(p.zayavka);
+    (pByZ[key] || (pByZ[key]=[])).push(p);
+  }
+
+  const head = [
+    'Уровень',
+    'Контракт',
+    'Заявка',
+    'Товар',
+    'Артикул',
+    'Код',
+    'Сопоставление',
+    'Заказано, шт',
+    'Отгружено, шт',
+    'Принято, шт',
+    'Ост. к отгрузке, шт',
+    'Ост. к приёмке, шт',
+    'Заказано, ₽',
+    'Отгружено, ₽',
+    'Принято, ₽',
+    'Ост. к отгрузке, ₽',
+    'Ост. к приёмке, ₽'
+  ];
+
+  const nums = o => [
+    o.ordQty,
+    o.shipQty,
+    o.recQty,
+    o.toShipQty,
+    o.toAcceptQty,
+    round2(o.ordSum),
+    round2(o.shipSum),
+    round2(o.recSum),
+    round2(
+      o.toShipSum != null
+        ? o.toShipSum
+        : o.ordSum - o.shipSum
+    ),
+    round2(
+      o.toAcceptSum != null
+        ? o.toAcceptSum
+        : o.shipSum - o.recSum
+    )
+  ];
+
+  const makeRow = ({
+    level,
+    contract = '',
+    zayavka = '',
+    product = '',
+    article = '',
+    code = '',
+    status = '',
+    metrics
+  }) => [
+    csvEsc(level),
+    labelCsv(contract),
+    csvEsc(zayavka),
+    csvEsc(product),
+    csvEsc(article),
+    csvEsc(code),
+    csvEsc(status),
+    ...nums(metrics)
+  ].join(',');
+
+  const out = [
+    head.map(csvEsc).join(',')
+  ];
+
+  for(const c of d.byContract){
+    out.push(makeRow({
+      level: 'Контракт',
+      contract: c.contractKey,
+      metrics: c
+    }));
+
+    const zs = (zByC[c.contractKey] || [])
+      .slice()
+      .sort(
+        (a,b) =>
+          String(a.zayavka).localeCompare(String(b.zayavka))
+      );
+
+    for(const z of zs){
+      out.push(makeRow({
+        level: 'Заявка',
+        contract: c.contractKey,
+        zayavka: z.zayavka,
+        metrics: z
+      }));
+
+      const key =
+        String(c.contractKey) + '#' + String(z.zayavka);
+
+      const ps = (pByZ[key] || [])
+        .slice()
+        .sort(
+          (a,b) =>
+            String(a.nomName || '')
+              .localeCompare(String(b.nomName || ''))
+        );
+
+      for(const p of ps){
+        let status = 'сопоставлено';
+
+        if(p.matchStatus === 'matched' && p.matchMethod){
+          status += ' (' + p.matchMethod + ')';
+        } else if(p.matchStatus === 'unmatched'){
+          status = 'не сопоставлено';
+        } else if(p.matchStatus === 'ambiguous'){
+          status = 'неоднозначно';
+        } else if(p.matchStatus === 'conflict'){
+          status = 'конфликт';
+        }
+
+        out.push(makeRow({
+          level: 'Товар',
+          contract: c.contractKey,
+          zayavka: z.zayavka,
+          product:
+            p.nomName ||
+            p.nomArticle ||
+            p.nomCode ||
+            'Номенклатура без названия',
+          article: p.nomArticle || '',
+          code: p.nomCode || '',
+          status,
+          metrics: p
+        }));
+      }
+    }
+  }
+
+  const blob = new Blob(
+    ['﻿' + out.join('\r\n')],
+    { type:'text/csv;charset=utf-8' }
+  );
+
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'sverka_gau_cto_' + new Date().toISOString().slice(0,10) + '.csv';
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  a.download =
+    'sverka_gau_cto_' +
+    new Date().toISOString().slice(0,10) +
+    '.csv';
+
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(
+    ()=>URL.revokeObjectURL(a.href),
+    1000
+  );
 }
 
 document.getElementById('q').addEventListener('input',e=>{ state.q=e.target.value; render(); });
