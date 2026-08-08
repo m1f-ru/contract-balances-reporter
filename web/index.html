@@ -50,6 +50,40 @@
   tr.z{background:var(--accent-soft)/.4;background:#f4f8f8;color:#38505a;font-size:13px;display:none}
   tr.z.show{display:table-row}
   tr.z td:first-child{padding-left:34px;color:#3a4a55}
+  tr.z{cursor:pointer}
+  .zchev{display:inline-block;width:14px;color:var(--muted);transition:transform .15s}
+  tr.z.zopen .zchev{transform:rotate(90deg)}
+  .zchev.empty{transform:none!important}
+
+  tr.p{display:none;background:#fff;color:#45545f;font-size:12.5px}
+  tr.p.show{display:table-row}
+  tr.p td:first-child{
+    padding-left:58px;
+    white-space:normal;
+    min-width:320px;
+  }
+
+  .nommeta{
+    color:var(--muted);
+    font-size:11px;
+    margin-left:6px;
+  }
+
+  .badge{
+    display:inline-block;
+    margin-left:7px;
+    padding:1px 6px;
+    border-radius:999px;
+    font-size:10px;
+    font-weight:600;
+    vertical-align:1px;
+  }
+
+  .badge.bad{
+    color:#a03227;
+    background:#fdecea;
+    border:1px solid #f5c6c0;
+  }
   .neg{color:var(--neg);font-weight:600}
   tr.totals td{border-top:2px solid var(--head);font-weight:700;background:#fbfcfd}
   .foot{color:var(--muted);font-size:12px;margin-top:16px;line-height:1.6}
@@ -119,32 +153,167 @@ const metrics = o => state.unit==='qty' ? metricsQty(o) : metricsSum(o);
 function render(){
   const d = state.data;
   const q = state.q.trim().toLowerCase();
-  const contracts = d.byContract.filter(c => !q || String(c.contractKey).toLowerCase().includes(q));
+
+  const contracts = d.byContract.filter(
+    c => !q || String(c.contractKey).toLowerCase().includes(q)
+  );
+
   const zByC = {};
-  for(const z of d.byZayavka){ (zByC[z.contractKey] ||= []).push(z); }
+  for(const z of d.byZayavka){
+    (zByC[z.contractKey] ||= []).push(z);
+  }
+
+  const nomByZ = {};
+  for(const p of (d.byNom || [])){
+    const key = String(p.contractKey) + '#' + String(p.zayavka);
+    (nomByZ[key] ||= []).push(p);
+  }
 
   const tot = [0,0,0,0,0];
   let html = '';
+
   for(const c of contracts){
-    const m = metrics(c); m.forEach((v,i)=>tot[i]+=v);
-    html += '<tr class="contract" data-c="'+encodeURIComponent(c.contractKey)+'">'
+    const m = metrics(c);
+    m.forEach((v,i) => tot[i] += v);
+
+    const cAttr = encodeURIComponent(c.contractKey);
+
+    html += '<tr class="contract" data-c="'+cAttr+'">'
       + '<td><span class="chev">▸</span> '+esc(c.contractKey)+'</td>'
-      + m.map(v=>cell(v)).join('') + '</tr>';
-    const zs = (zByC[c.contractKey]||[]).slice().sort((a,b)=>String(a.zayavka).localeCompare(String(b.zayavka)));
+      + m.map(v=>cell(v)).join('')
+      + '</tr>';
+
+    const zs = (zByC[c.contractKey] || [])
+      .slice()
+      .sort(
+        (a,b) =>
+          String(a.zayavka).localeCompare(String(b.zayavka))
+      );
+
     for(const z of zs){
-      html += '<tr class="z" data-of="'+encodeURIComponent(c.contractKey)+'">'
-        + '<td>заявка '+esc(z.zayavka)+'</td>'
-        + metrics(z).map(v=>cell(v)).join('') + '</tr>';
+      const zKey =
+        String(z.contractKey) + '#' + String(z.zayavka);
+
+      const zAttr = encodeURIComponent(zKey);
+
+      // Показываем в детализации именно расхождения,
+      // плюс несопоставленные позиции.
+      const ps = (nomByZ[zKey] || []).filter(
+        p =>
+          p.hasQtyDiff ||
+          p.hasSumDiff ||
+          p.matchStatus !== 'matched'
+      );
+
+      const lead = ps.length
+        ? '<span class="zchev">▸</span> '
+        : '<span class="zchev empty">·</span> ';
+
+      const note = ps.length
+        ? ' <span class="nommeta">расхождений: '+ps.length+'</span>'
+        : ' <span class="nommeta">по позициям без расхождений</span>';
+
+      html += '<tr class="z" data-of="'+cAttr+'" data-z="'+zAttr+'">'
+        + '<td>'+lead+'заявка '+esc(z.zayavka)+note+'</td>'
+        + metrics(z).map(v=>cell(v)).join('')
+        + '</tr>';
+
+      for(const p of ps){
+        const title =
+          p.nomName ||
+          p.nomArticle ||
+          p.nomCode ||
+          'Номенклатура без названия';
+
+        const meta = [];
+
+        if(p.nomArticle){
+          meta.push('арт. '+esc(p.nomArticle));
+        }
+
+        if(p.nomCode){
+          meta.push('код '+esc(p.nomCode));
+        }
+
+        let status = '';
+
+        if(p.matchStatus !== 'matched'){
+          const statusText =
+            p.matchStatus === 'unmatched'
+              ? 'не сопоставлено'
+              : p.matchStatus === 'ambiguous'
+                ? 'неоднозначно'
+                : 'конфликт';
+
+          status =
+            '<span class="badge bad">'+statusText+'</span>';
+        }
+
+        const metaHtml = meta.length
+          ? ' <span class="nommeta">'+meta.join(' · ')+'</span>'
+          : '';
+
+        html += '<tr class="p" data-of="'+cAttr+'" data-zrow="'+zAttr+'">'
+          + '<td>↳ '+esc(title)+metaHtml+status+'</td>'
+          + metrics(p).map(v=>cell(v)).join('')
+          + '</tr>';
+      }
     }
   }
-  html += '<tr class="totals"><td>Итого ('+contracts.length+')</td>'+tot.map(v=>cell(v)).join('')+'</tr>';
+
+  html += '<tr class="totals"><td>Итого ('+contracts.length+')</td>'
+    + tot.map(v=>cell(v)).join('')
+    + '</tr>';
+
   document.getElementById('rows').innerHTML = html;
 
+  // Контракт → показать/скрыть заявки.
   document.querySelectorAll('tr.contract').forEach(tr=>{
     tr.addEventListener('click',()=>{
-      tr.classList.toggle('open');
+      const opening = !tr.classList.contains('open');
+
+      tr.classList.toggle('open', opening);
+
       const c = tr.getAttribute('data-c');
-      document.querySelectorAll('tr.z[data-of="'+c+'"]').forEach(z=>z.classList.toggle('show'));
+
+      const zs =
+        document.querySelectorAll('tr.z[data-of="'+c+'"]');
+
+      zs.forEach(z=>{
+        z.classList.toggle('show', opening);
+
+        if(!opening){
+          z.classList.remove('zopen');
+        }
+      });
+
+      if(!opening){
+        document
+          .querySelectorAll('tr.p[data-of="'+c+'"]')
+          .forEach(p=>p.classList.remove('show'));
+      }
+    });
+  });
+
+  // Заявка → показать/скрыть товарные расхождения.
+  document.querySelectorAll('tr.z').forEach(tr=>{
+    tr.addEventListener('click',()=>{
+      if(!tr.classList.contains('show')) return;
+
+      const z = tr.getAttribute('data-z');
+
+      const products =
+        document.querySelectorAll('tr.p[data-zrow="'+z+'"]');
+
+      if(!products.length) return;
+
+      const opening = !tr.classList.contains('zopen');
+
+      tr.classList.toggle('zopen', opening);
+
+      products.forEach(p=>{
+        p.classList.toggle('show', opening);
+      });
     });
   });
 }
