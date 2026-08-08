@@ -328,10 +328,15 @@ function summary(){
   ];
   document.getElementById('cards').innerHTML = cards.map(c=>'<div class="card"><div class="k">'+c[0]+'</div><div class="v">'+c[1]+'</div></div>').join('');
   const dt = new Date(d.generatedAt);
-  document.getElementById('meta').innerHTML = 'Данные из 1С:УНФ и 1С:Бухгалтерия<br>Обновлено: '+dt.toLocaleString('ru-RU');
+  document.getElementById('meta').innerHTML =
+      'Данные из 1С:УНФ и 1С:Бухгалтерия'
+      + '<br>Период: ' + esc(d.periodYear || '—')
+      + '<br>Обновлено: ' + dt.toLocaleString('ru-RU');
   document.getElementById('foot').innerHTML =
     'Остаток к отгрузке = Заказано − Отгружено · Остаток к приёмке = Отгружено − Принято. '
-    + 'Отрицательный остаток — отгрузка/приёмка сверх плана. Отчёт обновляется автоматически; расчёт по контракту и заявке.';
+    + 'Отрицательный остаток — отгрузка/приёмка сверх плана. '
+    + 'Период определяется по дате заявки УНФ; связанные отгрузки и УПД учитываются независимо от даты. '
+    + 'Отчёт обновляется автоматически.';
 }
 const esc = s => String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
 
