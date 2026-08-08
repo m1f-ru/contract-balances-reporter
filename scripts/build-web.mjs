@@ -9,6 +9,7 @@ import { UnfRepo } from '../lib/unf.mjs';
 import { reconcile3 } from '../lib/reconcile.mjs';
 import { reconcileByZayavka } from '../lib/zayavka.mjs';
 import { writeJson } from '../lib/output.mjs';
+import { filterByOrderYear } from '../lib/period.mjs';
 
 import {
   loadNomCatalog,
@@ -19,6 +20,7 @@ import {
 import { reconcileByNom } from '../lib/nom-reconcile.mjs';
 
 const INN = process.env.CTO_INN ?? '9705101759'; // ГАУ ЦТО
+const REPORT_YEAR = Number(process.env.REPORT_YEAR ?? '2025');
 
 function refsFromLines(lines) {
   return [
@@ -42,6 +44,16 @@ function displayName(row) {
 }
 
 async function main() {
+  if (
+    !Number.isInteger(REPORT_YEAR) ||
+    REPORT_YEAR < 2000 ||
+    REPORT_YEAR > 2100
+  ) {
+    throw new Error(
+      `Некорректный REPORT_YEAR: ${REPORT_YEAR}`,
+    );
+  }
+
   const cfg = loadConfig();
 
   const buhClient = new Client(
@@ -69,11 +81,25 @@ async function main() {
     cfg.buh.org,
   );
 
-  const ordered = await unfRepo.orderLines(unfRefs);
-  const shipped = await unfRepo.naklLines(unfRefs);
-  const received = await buhRepo.updLines(buhRefs);
+  // Сначала читаем полную историю.
+  const orderedAll = await unfRepo.orderLines(unfRefs);
+  const shippedAll = await unfRepo.naklLines(unfRefs);
+  const receivedAll = await buhRepo.updLines(buhRefs);
 
-  // Существующая сверка по контрактам и заявкам.
+  // Период определяется по дате заявки / Заказа покупателя УНФ.
+  // Связанные отгрузки и УПД сохраняются даже если оформлены позднее.
+  const {
+    ordered,
+    shipped,
+    received,
+  } = filterByOrderYear({
+    ordered: orderedAll,
+    shipped: shippedAll,
+    received: receivedAll,
+    year: REPORT_YEAR,
+  });
+
+  // Сверка по контрактам и заявкам.
   const byContract = reconcile3({
     ordered,
     shipped,
@@ -86,7 +112,7 @@ async function main() {
     received,
   }).byZayavka;
 
-  // Каталоги номенклатуры только для реально участвующих товаров.
+  // Номенклатура только реально участвующих строк выбранного периода.
   const unfNomRefs = refsFromLines([
     ...ordered,
     ...shipped,
@@ -107,7 +133,6 @@ async function main() {
   const unfNomMap = makeCatalogMap(unfNom);
   const buhNomMap = makeCatalogMap(buhNom);
 
-  // Строгое сопоставление номенклатуры БУХ → УНФ.
   const {
     map: buhToUnfMap,
     stats: nomMatchStats,
@@ -116,7 +141,7 @@ async function main() {
     buhNom,
   );
 
-  // Сверка контракт × заявка × товар.
+  // Контракт × заявка × товар.
   const byNomRaw = reconcileByNom({
     ordered,
     shipped,
@@ -124,7 +149,6 @@ async function main() {
     buhToUnfMap,
   });
 
-  // Добавляем человеку понятное название товара.
   const byNom = byNomRaw.map((row) => {
     const unfCard = row.unfNomRef
       ? unfNomMap.get(String(row.unfNomRef))
@@ -157,16 +181,17 @@ async function main() {
     generatedAt: new Date().toISOString(),
     inn: INN,
     customer: 'ГАУ ЦТО',
+    periodYear: REPORT_YEAR,
 
     byContract,
     byZayavka,
-
     byNom,
     nomMatchStats,
   });
 
   console.error(
     `web/data.json готов: ` +
+    `период ${REPORT_YEAR}, ` +
     `контрактов ${byContract.length}, ` +
     `заявок ${byZayavka.length}, ` +
     `товарных строк ${byNom.length}, ` +
