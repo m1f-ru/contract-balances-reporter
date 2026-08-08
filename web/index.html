@@ -200,8 +200,7 @@ function render(){
       // плюс несопоставленные позиции.
       const ps = (nomByZ[zKey] || []).filter(
         p =>
-          p.hasQtyDiff ||
-          p.hasSumDiff ||
+          (state.unit === 'qty' ? p.hasQtyDiff : p.hasSumDiff) ||
           p.matchStatus !== 'matched'
       );
 
