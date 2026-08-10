@@ -611,8 +611,18 @@ function exportCsv(){
                     : '';
           status = 'сопоставлено' + (methodText ? ': ' + methodText : '');
         } else if(p.unfNomRef && !p.buhNomRef){
-          status = 'позиция отсутствует в принятых УПД по этой заявке';
+          status = 'Принято по позиции: 0';
         }
+
+        const buhProductText =
+          p.buhNomName ||
+          p.buhNomArticle ||
+          p.buhNomCode ||
+          (
+            p.unfNomRef && !p.buhNomRef
+              ? 'позиция отсутствует в принятых УПД по этой заявке'
+              : ''
+          );
 
         out.push(makeRow({
           level: 'Товар',
@@ -625,11 +635,7 @@ function exportCsv(){
             '',
           unfArticle: p.unfNomArticle || '',
           unfCode: p.unfNomCode || '',
-          buhProduct:
-            p.buhNomName ||
-            p.buhNomArticle ||
-            p.buhNomCode ||
-            '',
+          buhProduct: buhProductText,
           buhArticle: p.buhNomArticle || '',
           buhCode: p.buhNomCode || '',
           status,
