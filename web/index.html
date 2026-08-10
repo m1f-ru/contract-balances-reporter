@@ -60,7 +60,39 @@
   tr.p td:first-child{
     padding-left:58px;
     white-space:normal;
-    min-width:320px;
+    min-width:520px;
+  }
+
+  .nompair{
+    display:grid;
+    gap:3px;
+  }
+
+  .nomsource{
+    display:flex;
+    align-items:baseline;
+    gap:7px;
+    line-height:1.35;
+  }
+
+  .nomsrc{
+    flex:0 0 38px;
+    font-weight:700;
+    color:#3a4a55;
+  }
+
+  .nomname{
+    color:#45545f;
+  }
+
+  .nomempty{
+    color:var(--muted);
+    font-style:italic;
+  }
+
+  .nomlink{
+    margin-top:3px;
+    padding-left:45px;
   }
 
   .nommeta{
@@ -71,7 +103,6 @@
 
   .badge{
     display:inline-block;
-    margin-left:7px;
     padding:1px 6px;
     border-radius:999px;
     font-size:10px;
@@ -79,11 +110,24 @@
     vertical-align:1px;
   }
 
+  .badge.ok{
+    color:#23633b;
+    background:#edf7f0;
+    border:1px solid #c8e3d0;
+  }
+
+  .badge.neutral{
+    color:#596674;
+    background:#f3f5f7;
+    border:1px solid #dde2e7;
+  }
+
   .badge.bad{
     color:#a03227;
     background:#fdecea;
     border:1px solid #f5c6c0;
   }
+
   .neg{color:var(--neg);font-weight:600}
   tr.totals td{border-top:2px solid var(--head);font-weight:700;background:#fbfcfd}
   .foot{color:var(--muted);font-size:12px;margin-top:16px;line-height:1.6}
