@@ -262,63 +262,183 @@ function render(){
         + '</tr>';
 
       for(const p of ps){
+        const makeMeta = (article, code) => {
+          const meta = [];
 
-        html += '<tr class="totals"><td>Итого ('+contracts.length+')</td>'
-          + tot.map(v=>cell(v)).join('')
+          if(article){
+            meta.push('арт. ' + esc(article));
+          }
+
+          if(code){
+            meta.push('код ' + esc(code));
+          }
+
+          return meta.length
+            ? ' <span class="nommeta">' + meta.join(' · ') + '</span>'
+            : '';
+        };
+
+        const unfName =
+          p.unfNomName ||
+          p.unfNomArticle ||
+          p.unfNomCode ||
+          '';
+
+        const buhName =
+          p.buhNomName ||
+          p.buhNomArticle ||
+          p.buhNomCode ||
+          '';
+
+        const hasUnf = Boolean(
+          p.unfNomName || p.unfNomArticle || p.unfNomCode
+        );
+
+        const hasBuh = Boolean(
+          p.buhNomName || p.buhNomArticle || p.buhNomCode
+        );
+
+        const unfHtml = hasUnf
+          ? esc(unfName) +
+            makeMeta(p.unfNomArticle, p.unfNomCode)
+          : '<span class="nomempty">нет позиции в УНФ</span>';
+
+        const buhHtml = hasBuh
+          ? esc(buhName) +
+            makeMeta(p.buhNomArticle, p.buhNomCode)
+          : '<span class="nomempty">нет позиции в принятых УПД</span>';
+
+        let statusText = '';
+        let statusClass = 'neutral';
+
+        if(p.matchStatus === 'unmatched'){
+          statusText = 'не сопоставлено';
+          statusClass = 'bad';
+
+        } else if(p.matchStatus === 'ambiguous'){
+          statusText = 'неоднозначное сопоставление';
+          statusClass = 'bad';
+
+        } else if(p.matchStatus === 'conflict'){
+          statusText = 'конфликт сопоставления';
+          statusClass = 'bad';
+
+        } else if(hasUnf && hasBuh){
+          const method = String(
+            p.matchMethod || p.matchBy || ''
+          );
+
+          const methodText =
+            method === 'Артикул' || method === 'article'
+              ? 'по артикулу'
+              : method === 'Code' || method === 'code'
+                ? 'по коду'
+                : method === 'НаименованиеПолное' || method === 'fullName'
+                  ? 'по полному наименованию'
+                  : method === 'Description' || method === 'description'
+                    ? 'по наименованию'
+                    : method
+                      ? 'по ' + method
+                      : '';
+
+          statusText =
+            'сопоставлено' +
+            (methodText ? ': ' + methodText : '');
+
+          statusClass = 'ok';
+
+        } else if(hasUnf && !hasBuh){
+          statusText = 'в принятых УПД позиции нет';
+          statusClass = 'neutral';
+
+        } else if(!hasUnf && hasBuh){
+          statusText = 'позиция БУХ не сопоставлена с УНФ';
+          statusClass = 'bad';
+
+        } else {
+          statusText = 'связь не определена';
+          statusClass = 'neutral';
+        }
+
+        html +=
+          '<tr class="p" data-of="'+cAttr+'" data-zrow="'+zAttr+'">'
+          + '<td>'
+          +   '<div class="nompair">'
+          +     '<div class="nomsource">'
+          +       '<span class="nomsrc">УНФ:</span>'
+          +       '<span class="nomname">'+unfHtml+'</span>'
+          +     '</div>'
+          +     '<div class="nomsource">'
+          +       '<span class="nomsrc">БУХ:</span>'
+          +       '<span class="nomname">'+buhHtml+'</span>'
+          +     '</div>'
+          +     '<div class="nomlink">'
+          +       '<span class="badge '+statusClass+'">'+esc(statusText)+'</span>'
+          +     '</div>'
+          +   '</div>'
+          + '</td>'
+          + metrics(p).map(v=>cell(v)).join('')
           + '</tr>';
-      
-        document.getElementById('rows').innerHTML = html;
-      
-        // Контракт → показать/скрыть заявки.
-        document.querySelectorAll('tr.contract').forEach(tr=>{
-          tr.addEventListener('click',()=>{
-            const opening = !tr.classList.contains('open');
-      
-            tr.classList.toggle('open', opening);
-      
-            const c = tr.getAttribute('data-c');
-      
-            const zs =
-              document.querySelectorAll('tr.z[data-of="'+c+'"]');
-      
-            zs.forEach(z=>{
-              z.classList.toggle('show', opening);
-      
-              if(!opening){
-                z.classList.remove('zopen');
-              }
-            });
-      
-            if(!opening){
-              document
-                .querySelectorAll('tr.p[data-of="'+c+'"]')
-                .forEach(p=>p.classList.remove('show'));
-            }
-          });
-        });
-      
-        // Заявка → показать/скрыть товарные расхождения.
-        document.querySelectorAll('tr.z').forEach(tr=>{
-          tr.addEventListener('click',()=>{
-            if(!tr.classList.contains('show')) return;
-      
-            const z = tr.getAttribute('data-z');
-      
-            const products =
-              document.querySelectorAll('tr.p[data-zrow="'+z+'"]');
-      
-            if(!products.length) return;
-      
-            const opening = !tr.classList.contains('zopen');
-      
-            tr.classList.toggle('zopen', opening);
-      
-            products.forEach(p=>{
-              p.classList.toggle('show', opening);
-            });
-          });
-        });
       }
+    }
+  }
+
+  html += '<tr class="totals"><td>Итого ('+contracts.length+')</td>'
+    + tot.map(v=>cell(v)).join('')
+    + '</tr>';
+
+  document.getElementById('rows').innerHTML = html;
+
+  // Контракт → показать/скрыть заявки.
+  document.querySelectorAll('tr.contract').forEach(tr=>{
+    tr.addEventListener('click',()=>{
+      const opening = !tr.classList.contains('open');
+
+      tr.classList.toggle('open', opening);
+
+      const c = tr.getAttribute('data-c');
+
+      const zs =
+        document.querySelectorAll('tr.z[data-of="'+c+'"]');
+
+      zs.forEach(z=>{
+        z.classList.toggle('show', opening);
+
+        if(!opening){
+          z.classList.remove('zopen');
+        }
+      });
+
+      if(!opening){
+        document
+          .querySelectorAll('tr.p[data-of="'+c+'"]')
+          .forEach(p=>p.classList.remove('show'));
+      }
+    });
+  });
+
+  // Заявка → показать/скрыть товарные расхождения.
+  document.querySelectorAll('tr.z').forEach(tr=>{
+    tr.addEventListener('click',()=>{
+      if(!tr.classList.contains('show')) return;
+
+      const z = tr.getAttribute('data-z');
+
+      const products =
+        document.querySelectorAll('tr.p[data-zrow="'+z+'"]');
+
+      if(!products.length) return;
+
+      const opening = !tr.classList.contains('zopen');
+
+      tr.classList.toggle('zopen', opening);
+
+      products.forEach(p=>{
+        p.classList.toggle('show', opening);
+      });
+    });
+  });
+}
 
 function summary(){
   const d = state.data;
