@@ -485,9 +485,12 @@ function exportCsv(){
     'Уровень',
     'Контракт',
     'Заявка',
-    'Товар',
-    'Артикул',
-    'Код',
+    'Товар УНФ',
+    'Артикул УНФ',
+    'Код УНФ',
+    'Товар БУХ (принято)',
+    'Артикул БУХ',
+    'Код БУХ',
     'Сопоставление',
     'Заказано, шт',
     'Отгружено, шт',
@@ -526,18 +529,24 @@ function exportCsv(){
     level,
     contract = '',
     zayavka = '',
-    product = '',
-    article = '',
-    code = '',
+    unfProduct = '',
+    unfArticle = '',
+    unfCode = '',
+    buhProduct = '',
+    buhArticle = '',
+    buhCode = '',
     status = '',
     metrics
   }) => [
     csvEsc(level),
     labelCsv(contract),
     csvEsc(zayavka),
-    csvEsc(product),
-    csvEsc(article),
-    csvEsc(code),
+    csvEsc(unfProduct),
+    csvEsc(unfArticle),
+    csvEsc(unfCode),
+    csvEsc(buhProduct),
+    csvEsc(buhArticle),
+    csvEsc(buhCode),
     csvEsc(status),
     ...nums(metrics)
   ].join(',');
@@ -575,32 +584,54 @@ function exportCsv(){
         .slice()
         .sort(
           (a,b) =>
-            String(a.nomName || '')
-              .localeCompare(String(b.nomName || ''))
+            String(a.unfNomName || a.nomName || '')
+              .localeCompare(String(b.unfNomName || b.nomName || ''))
         );
 
       for(const p of ps){
         let status = 'сопоставлено';
 
         if(p.matchStatus === 'unmatched'){
-          status = 'не сопоставлено';
+          status = 'Сопоставление УНФ ↔ БУХ: не найдено';
         } else if(p.matchStatus === 'ambiguous'){
-          status = 'неоднозначно';
+          status = 'Сопоставление УНФ ↔ БУХ: неоднозначно';
         } else if(p.matchStatus === 'conflict'){
-          status = 'конфликт';
+          status = 'Сопоставление УНФ ↔ БУХ: конфликт';
+        } else if(p.unfNomRef && p.buhNomRef){
+          const method = String(p.matchMethod || '');
+          const methodText =
+            method === 'Артикул' || method === 'article'
+              ? 'по артикулу'
+              : method === 'Code' || method === 'code'
+                ? 'по коду'
+                : method === 'НаименованиеПолное' || method === 'fullName'
+                  ? 'по полному наименованию'
+                  : method === 'Description' || method === 'description'
+                    ? 'по наименованию'
+                    : '';
+          status = 'сопоставлено' + (methodText ? ': ' + methodText : '');
+        } else if(p.unfNomRef && !p.buhNomRef){
+          status = 'позиция отсутствует в принятых УПД по этой заявке';
         }
 
         out.push(makeRow({
           level: 'Товар',
           contract: c.contractKey,
           zayavka: z.zayavka,
-          product:
-            p.nomName ||
-            p.nomArticle ||
-            p.nomCode ||
-            'Номенклатура без названия',
-          article: p.nomArticle || '',
-          code: p.nomCode || '',
+          unfProduct:
+            p.unfNomName ||
+            p.unfNomArticle ||
+            p.unfNomCode ||
+            '',
+          unfArticle: p.unfNomArticle || '',
+          unfCode: p.unfNomCode || '',
+          buhProduct:
+            p.buhNomName ||
+            p.buhNomArticle ||
+            p.buhNomCode ||
+            '',
+          buhArticle: p.buhNomArticle || '',
+          buhCode: p.buhNomCode || '',
           status,
           metrics: p
         }));
