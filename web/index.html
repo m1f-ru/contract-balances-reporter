@@ -262,104 +262,63 @@ function render(){
         + '</tr>';
 
       for(const p of ps){
-        const title =
-          p.nomName ||
-          p.nomArticle ||
-          p.nomCode ||
-          'Номенклатура без названия';
 
-        const meta = [];
-
-        if(p.nomArticle){
-          meta.push('арт. '+esc(p.nomArticle));
-        }
-
-        if(p.nomCode){
-          meta.push('код '+esc(p.nomCode));
-        }
-
-        let status = '';
-
-        if(p.matchStatus !== 'matched'){
-          const statusText =
-            p.matchStatus === 'unmatched'
-              ? 'не сопоставлено'
-              : p.matchStatus === 'ambiguous'
-                ? 'неоднозначно'
-                : 'конфликт';
-
-          status =
-            '<span class="badge bad">'+statusText+'</span>';
-        }
-
-        const metaHtml = meta.length
-          ? ' <span class="nommeta">'+meta.join(' · ')+'</span>'
-          : '';
-
-        html += '<tr class="p" data-of="'+cAttr+'" data-zrow="'+zAttr+'">'
-          + '<td>↳ '+esc(title)+metaHtml+status+'</td>'
-          + metrics(p).map(v=>cell(v)).join('')
+        html += '<tr class="totals"><td>Итого ('+contracts.length+')</td>'
+          + tot.map(v=>cell(v)).join('')
           + '</tr>';
+      
+        document.getElementById('rows').innerHTML = html;
+      
+        // Контракт → показать/скрыть заявки.
+        document.querySelectorAll('tr.contract').forEach(tr=>{
+          tr.addEventListener('click',()=>{
+            const opening = !tr.classList.contains('open');
+      
+            tr.classList.toggle('open', opening);
+      
+            const c = tr.getAttribute('data-c');
+      
+            const zs =
+              document.querySelectorAll('tr.z[data-of="'+c+'"]');
+      
+            zs.forEach(z=>{
+              z.classList.toggle('show', opening);
+      
+              if(!opening){
+                z.classList.remove('zopen');
+              }
+            });
+      
+            if(!opening){
+              document
+                .querySelectorAll('tr.p[data-of="'+c+'"]')
+                .forEach(p=>p.classList.remove('show'));
+            }
+          });
+        });
+      
+        // Заявка → показать/скрыть товарные расхождения.
+        document.querySelectorAll('tr.z').forEach(tr=>{
+          tr.addEventListener('click',()=>{
+            if(!tr.classList.contains('show')) return;
+      
+            const z = tr.getAttribute('data-z');
+      
+            const products =
+              document.querySelectorAll('tr.p[data-zrow="'+z+'"]');
+      
+            if(!products.length) return;
+      
+            const opening = !tr.classList.contains('zopen');
+      
+            tr.classList.toggle('zopen', opening);
+      
+            products.forEach(p=>{
+              p.classList.toggle('show', opening);
+            });
+          });
+        });
       }
-    }
-  }
-
-  html += '<tr class="totals"><td>Итого ('+contracts.length+')</td>'
-    + tot.map(v=>cell(v)).join('')
-    + '</tr>';
-
-  document.getElementById('rows').innerHTML = html;
-
-  // Контракт → показать/скрыть заявки.
-  document.querySelectorAll('tr.contract').forEach(tr=>{
-    tr.addEventListener('click',()=>{
-      const opening = !tr.classList.contains('open');
-
-      tr.classList.toggle('open', opening);
-
-      const c = tr.getAttribute('data-c');
-
-      const zs =
-        document.querySelectorAll('tr.z[data-of="'+c+'"]');
-
-      zs.forEach(z=>{
-        z.classList.toggle('show', opening);
-
-        if(!opening){
-          z.classList.remove('zopen');
-        }
-      });
-
-      if(!opening){
-        document
-          .querySelectorAll('tr.p[data-of="'+c+'"]')
-          .forEach(p=>p.classList.remove('show'));
-      }
-    });
-  });
-
-  // Заявка → показать/скрыть товарные расхождения.
-  document.querySelectorAll('tr.z').forEach(tr=>{
-    tr.addEventListener('click',()=>{
-      if(!tr.classList.contains('show')) return;
-
-      const z = tr.getAttribute('data-z');
-
-      const products =
-        document.querySelectorAll('tr.p[data-zrow="'+z+'"]');
-
-      if(!products.length) return;
-
-      const opening = !tr.classList.contains('zopen');
-
-      tr.classList.toggle('zopen', opening);
-
-      products.forEach(p=>{
-        p.classList.toggle('show', opening);
-      });
-    });
-  });
-}
 
 function summary(){
   const d = state.data;
