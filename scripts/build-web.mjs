@@ -33,6 +33,8 @@ function refsFromLines(lines) {
 }
 
 function displayName(row) {
+  if (!row) return '';
+
   return (
     row.fullName ||
     row.description ||
@@ -158,6 +160,7 @@ async function main() {
       ? buhNomMap.get(String(row.buhNomRef))
       : null;
 
+    // Старые поля оставляем для совместимости с текущим интерфейсом.
     const card = unfCard ?? buhCard ?? {};
 
     return {
@@ -166,6 +169,15 @@ async function main() {
       nomName: displayName(card),
       nomArticle: card.article ?? '',
       nomCode: card.code ?? '',
+
+      // Явные данные из каждой базы.
+      unfNomName: displayName(unfCard),
+      unfNomArticle: unfCard?.article ?? '',
+      unfNomCode: unfCard?.code ?? '',
+
+      buhNomName: displayName(buhCard),
+      buhNomArticle: buhCard?.article ?? '',
+      buhNomCode: buhCard?.code ?? '',
 
       hasQtyDiff:
         row.toShipQty !== 0 ||
