@@ -76,7 +76,7 @@
   }
 
   .nomsrc{
-    flex:0 0 38px;
+    flex:0 0 86px;
     font-weight:700;
     color:#3a4a55;
   }
@@ -306,21 +306,21 @@ function render(){
         const buhHtml = hasBuh
           ? esc(buhName) +
             makeMeta(p.buhNomArticle, p.buhNomCode)
-          : '<span class="nomempty">нет позиции в принятых УПД</span>';
+          : '<span class="nomempty">позиция отсутствует в принятых УПД по этой заявке</span>';
 
         let statusText = '';
         let statusClass = 'neutral';
 
         if(p.matchStatus === 'unmatched'){
-          statusText = 'не сопоставлено';
+          statusText = 'Сопоставление УНФ ↔ БУХ: не найдено';
           statusClass = 'bad';
 
         } else if(p.matchStatus === 'ambiguous'){
-          statusText = 'неоднозначное сопоставление';
+          statusText = 'Сопоставление УНФ ↔ БУХ: неоднозначно';
           statusClass = 'bad';
 
         } else if(p.matchStatus === 'conflict'){
-          statusText = 'конфликт сопоставления';
+          statusText = 'Сопоставление УНФ ↔ БУХ: конфликт';
           statusClass = 'bad';
 
         } else if(hasUnf && hasBuh){
@@ -337,9 +337,7 @@ function render(){
                   ? 'по полному наименованию'
                   : method === 'Description' || method === 'description'
                     ? 'по наименованию'
-                    : method
-                      ? 'по ' + method
-                      : '';
+                    : '';
 
           statusText =
             'сопоставлено' +
@@ -348,11 +346,11 @@ function render(){
           statusClass = 'ok';
 
         } else if(hasUnf && !hasBuh){
-          statusText = 'в принятых УПД позиции нет';
+          statusText = 'Принято по позиции: 0';
           statusClass = 'neutral';
 
         } else if(!hasUnf && hasBuh){
-          statusText = 'позиция БУХ не сопоставлена с УНФ';
+          statusText = 'Сопоставление УНФ ↔ БУХ: не найдено';
           statusClass = 'bad';
 
         } else {
@@ -369,7 +367,7 @@ function render(){
           +       '<span class="nomname">'+unfHtml+'</span>'
           +     '</div>'
           +     '<div class="nomsource">'
-          +       '<span class="nomsrc">БУХ:</span>'
+          +       '<span class="nomsrc">БУХ (принято):</span>'
           +       '<span class="nomname">'+buhHtml+'</span>'
           +     '</div>'
           +     '<div class="nomlink">'
